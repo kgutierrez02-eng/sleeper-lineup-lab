@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.cache/
+preferences.json
+build/
+dist/
+distribution/
+distribution-mac/
+.build-sleeper/
+.build-sleeper-mac/
+*.spec.bak
+.DS_Store
+Thumbs.db

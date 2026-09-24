@@ -1,0 +1,75 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dev dependencies
+        run: pip install -r sleeper_app/requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest sleeper_app/tests -q
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: pip install -r sleeper_app/requirements-build.txt
+      - name: Build Windows EXE
+        run: python build_sleeper_exe.py --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sleeper-lineup-lab-windows
+          path: distribution/*.zip
+
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: pip install -r sleeper_app/requirements-build.txt
+      - name: Build macOS app
+        run: python build_sleeper_app_mac.py --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sleeper-lineup-lab-macos
+          path: distribution-mac/*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create/update GitHub Release with both builds
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/sleeper-lineup-lab-windows/*.zip
+            artifacts/sleeper-lineup-lab-macos/*.zip
+          generate_release_notes: true
